@@ -7,28 +7,34 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v3
         with:
-          distribution: 'temurin'
+          submodules: true   # подтягиваем подмодули
+          fetch-depth: 0     # нужен полный git history для submodules
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
           java-version: '17'
-          cache: 'maven'
+          distribution: 'temurin'
 
-      - name: Build and run tests
-        run: mvn clean test
-
-      - name: Generate Allure report
-        run: mvn allure:report
-
-      - name: Upload Allure report
-        uses: actions/upload-artifact@v4
+      - name: Cache Maven packages
+        uses: actions/cache@v3
         with:
-          name: allure-report
-          path: target/site/allure-maven-plugin
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build main project
+        run: mvn clean install
+
+      - name: Build and run tests from submodule
+        run: |
+          cd tests
+          mvn clean test
