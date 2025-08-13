@@ -31,13 +31,13 @@ jobs:
             gradle-${{ runner.os }}-
 
       - name: Build and run tests
-        run: ./gradlew clean build test
+        run: mvn clean test
 
       - name: Generate Allure report
-        run: ./gradlew allureReport
+        run: mvn allure:report
 
       - name: Upload Allure report
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
-          path: build/reports/allure-report
+          path: target/site/allure-maven-plugin
