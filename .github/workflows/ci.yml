@@ -1,5 +1,4 @@
-name: CI
-
+name: CI (Regress-Tests)
 on:
   push:
     branches: [ main ]
@@ -7,34 +6,43 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository with submodules
-        uses: actions/checkout@v3
-        with:
-          submodules: true   # подтягиваем подмодули
-          fetch-depth: 0     # нужен полный git history для submodules
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
 
-      - name: Cache Maven packages
-        uses: actions/cache@v3
+      - name: Cache Maven
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build main project
-        run: mvn clean install
+      - name: Install Google Chrome
+        uses: browser-actions/setup-chrome@v1
 
-      - name: Build and run tests from submodule
+      - name: Run tests (headless Chrome)
         run: |
-          cd tests
-          mvn clean test
+          mvn -B -e -Dselenide.browser=chrome -Dselenide.headless=true clean test
+
+      - name: Upload test reports (Surefire, Allure, Selenide)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/**
+            target/failsafe-reports/**
+            target/allure-results/**
+            build/reports/tests/**
+            selenide-*/**
+          if-no-files-found: ignore
